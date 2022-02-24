@@ -11,3 +11,8 @@
   - flask
   - postgreSQL
   - yfinance 
+
+<개발 예정>
+1. 이상 동작 알람 기능(slack bot)
+2. 클라우드(AWS-redshit, GCP-bigquery)
+3. 실시간 데이터(flink, sparkStream) 
