@@ -3,12 +3,19 @@ from datetime import datetime, timedelta
 import requests
 import pandas as pd    
 from airflow import DAG
-from airflow.operators.python import PythonOperator
 from airflow.models import Variable
 from airflow.hooks.postgres_hook import PostgresHook
+from airflow.operators.python import PythonOperator
 
+## plugin libs
 # from ..plugins import calculator
 import calculator
+# from ..plugins import evnet_trigger
+import event_trigger
+
+
+## <default>
+slack_alarm = event_trigger.SlackAlert(channel="#airflow_alarm")
 
 def get_connector():
     hook = PostgresHook(postgres_conn_id="postgres_DB")
@@ -17,19 +24,19 @@ def get_connector():
 default_args = {
     "owner": "airflow",
     "retries": 1,
-    "retry_delay": timedelta(minutes=1)
+    "retry_delay": timedelta(minutes=1),
+    "on_failure_callback": slack_alarm.slack_fail_alert,
 }
 
+## </default>
 def service_stock_trigger_fn(**context):
     """
         (*임시) stock 데이터를 수집할 수 있는 트리거 함수
 
         추후에는 실시간으로 수집되는 정보를 활용할 것이기 때문에 제거되어야 함.
     """
-    TICKERS = ["SPY", "QQQ"]
-
     url = context["params"]["url"]
-    res = requests.post(url, json={"tickers": TICKERS})
+    res = requests.post(url)
 
     return None
 
@@ -54,48 +61,54 @@ def summary_stock_index(**context):
     """
         주가 지표를 계산하여 요약 테이블에 추가
     """
-    SUMMARY_TICKERS = ["SPY"]
-
     conn = get_connector()
-    cursor = conn.cursor()
+    cur = conn.cursor()
 
-    for s_ticker in SUMMARY_TICKERS:
+    cur.execute("SELECT ticker FROM service.tb_ticker")
+    tickers = list(map(lambda x:x[0], cur.fetchall()))
+
+    # create summary table
+    sql = f"""
+        BEGIN;
+        DROP TABLE IF EXISTS summary.stock;
+        CREATE TABLE summary.stock (
+            ts timestamp,
+            close FLOAT,
+            mv200 FLOAT,
+            mdd FLOAT,
+            ticker VARCHAR
+        );
+    """
+    cur.execute(sql)
+
+    for s_ticker in tickers:
         # extract dataset from ticker
         sql = f"""
             SELECT ts, close FROM dummy.stock
             WHERE ticker = '{s_ticker}'
+            ORDER BY ts;
         """
-        cursor.execute(sql)
+        cur.execute(sql)
 
         dates = []
         prices = []
-        for ts, price in cursor.fetchall():
+        for ts, price in cur.fetchall():
             dates.append(ts)
             prices.append(price)
 
         # calculate stock index
         df = pd.DataFrame(data=prices, index=dates, columns=["close"])
         df["mv200"] = calculator.get_moving_average(df["close"], window=200)
-        df["mdd"] = calculator.get_moving_average(df["close"], window=52*5) # 52주
+        df["mdd"] = calculator.get_moving_average(df["close"], window=200)
         
-        # create summary table
-        sql = f"""
-            BEGIN;
-            DROP TABLE IF EXISTS summary.stock;
-            CREATE TABLE summary.stock (
-                ts timestamp,
-                close FLOAT,
-                mv200 FLOAT,
-                mdd FLOAT
-            );
-        """
         for ts, row in df.iterrows():
-            sql += f"""
-                INSERT INTO summary.stock (ts, close, mv200, mdd)
-                VALUES ('{ts.strftime("%Y-%m-%d %H:%M:%S")}', {row.close}, {row.mv200}, {row.mdd});
+            sql = f"""
+                INSERT INTO summary.stock (ts, close, mv200, mdd, ticker)
+                VALUES ('{ts.strftime("%Y-%m-%d %H:%M:%S")}', {row.close}, {row.mv200}, {row.mdd}, '{s_ticker}');
             """
-        cursor.execute(sql)
-        cursor.execute("END;")
+        cur.execute(sql)
+
+    cur.execute("END;")
 
 
 with DAG(
