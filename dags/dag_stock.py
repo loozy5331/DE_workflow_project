@@ -73,9 +73,10 @@ def summary_stock_index(**context):
         DROP TABLE IF EXISTS summary.stock;
         CREATE TABLE summary.stock (
             ts timestamp,
-            close FLOAT,
+            adj_close FLOAT,
             mv200 FLOAT,
-            mdd FLOAT,
+            high_52w FLOAT,
+            low_52w FLOAT,
             ticker VARCHAR
         );
     """
@@ -84,7 +85,7 @@ def summary_stock_index(**context):
     for s_ticker in tickers:
         # extract dataset from ticker
         sql = f"""
-            SELECT ts, close FROM dummy.stock
+            SELECT ts, adj_close FROM dummy.stock
             WHERE ticker = '{s_ticker}'
             ORDER BY ts;
         """
@@ -97,14 +98,14 @@ def summary_stock_index(**context):
             prices.append(price)
 
         # calculate stock index
-        df = pd.DataFrame(data=prices, index=dates, columns=["close"])
-        df["mv200"] = calculator.get_moving_average(df["close"], window=200)
-        df["mdd"] = calculator.get_moving_average(df["close"], window=200)
+        df = pd.DataFrame(data=prices, index=dates, columns=["adj_close"])
+        df = calculator.get_moving_average(df, window=200)
+        df = calculator.get_low_n_high_52week(df)
         
         for ts, row in df.iterrows():
             sql = f"""
-                INSERT INTO summary.stock (ts, close, mv200, mdd, ticker)
-                VALUES ('{ts.strftime("%Y-%m-%d %H:%M:%S")}', {row.close}, {row.mv200}, {row.mdd}, '{s_ticker}');
+                INSERT INTO summary.stock (ts, adj_close, mv200, high_52w, low_52w, ticker)
+                VALUES ('{ts.strftime("%Y-%m-%d %H:%M:%S")}', {row.adj_close}, {row.mv200}, {row.high_52w}, {row.low_52w}, '{s_ticker}');
             """
         cur.execute(sql)
 
