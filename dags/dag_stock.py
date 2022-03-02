@@ -36,9 +36,12 @@ def service_stock_trigger_fn(**context):
         추후에는 실시간으로 수집되는 정보를 활용할 것이기 때문에 제거되어야 함.
     """
     url = context["params"]["url"]
-    res = requests.post(url)
+    end_date = context["execution_date"].strftime("%Y-%m-%d")
+    
+    res = requests.post(url, json={"end_date":end_date})
 
     return res.status_code
+        
 
 def copy_stock_table(**context):
     """
