@@ -83,16 +83,14 @@ def summary_stock_index(**context):
             ticker VARCHAR
         );
     """
-    cur.execute(sql)
 
     for s_ticker in tickers:
         # extract dataset from ticker
-        sql = f"""
+        sql += f"""
             SELECT ts, adj_close FROM dummy.stock
             WHERE ticker = '{s_ticker}'
             ORDER BY ts;
         """
-        cur.execute(sql)
 
         dates = []
         prices = []
@@ -106,16 +104,15 @@ def summary_stock_index(**context):
         df = calculator.get_low_n_high_52week(df)
         
         for ts, row in df.iterrows():
-            sql = f"""
+            sql += f"""
                 INSERT INTO summary.stock (ts, adj_close, mv200, high_52w, low_52w, ticker)
                 VALUES ('{ts.strftime("%Y-%m-%d %H:%M:%S")}', {row.adj_close}, {row.mv200}, {row.high_52w}, {row.low_52w}, '{s_ticker}');
             """
-        cur.execute(sql)
-
+    cur.execute(sql)
     cur.execute("END;")
+
     cur.close()
     conn.close()
-
 
 """
     0. collect_stock_task:  주가 수집 서비스를 동작시킴
