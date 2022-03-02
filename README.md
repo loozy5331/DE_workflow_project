@@ -1,4 +1,4 @@
-<h1> ETL 구현 실습을 위한 repository </h1>
+<h1> ETL 구현 실습을 위한 repo </h1>
 (feat. 망가져도 괜찮은 장난감)
 
 <h2> 목표 </h2>
@@ -31,7 +31,7 @@ git clone https://github.com/loozy5331/DE_services_project.git
 4. <http://localhost:8080> (airflow webserver) 접속 후,
 
 ```text
-Admin > Connections 에 "postgres_DB" 추가 # OLTP, DW, D 역할 수행(추후 분리 예정)
+Admin > Connections 에 "postgres_DB" 추가 # OLTP, DW, DM 역할 수행(추후 분리 예정)
 Admin > Variables 에 "service_stock_url" 추가
 ```
 
