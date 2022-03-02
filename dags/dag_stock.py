@@ -38,7 +38,7 @@ def service_stock_trigger_fn(**context):
     url = context["params"]["url"]
     res = requests.post(url)
 
-    return None
+    return res.status_code
 
 def copy_stock_table(**context):
     """
@@ -56,6 +56,9 @@ def copy_stock_table(**context):
     """
     cur.execute(sql)
     cur.execute("END;")
+
+    cur.close()
+    conn.close()
 
 def summary_stock_index(**context):
     """
@@ -110,6 +113,8 @@ def summary_stock_index(**context):
         cur.execute(sql)
 
     cur.execute("END;")
+    cur.close()
+    conn.close()
 
 
 with DAG(
