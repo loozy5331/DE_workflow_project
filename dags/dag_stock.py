@@ -70,11 +70,10 @@ def summary_stock_index(**context):
     cur.execute("SELECT ticker FROM service.tb_ticker")
     tickers = list(map(lambda x:x[0], cur.fetchall()))
 
-    # create summary table
+    # create summary temporary table
     sql = f"""
-        BEGIN;
-        DROP TABLE IF EXISTS summary.stock;
-        CREATE TABLE summary.stock (
+        DROP TABLE IF EXISTS summary.temp_stock;
+        CREATE TABLE summary.temp_stock (
             ts timestamp,
             adj_close FLOAT,
             mv200 FLOAT,
@@ -83,10 +82,11 @@ def summary_stock_index(**context):
             ticker VARCHAR
         );
     """
+    cur.execute(sql)
 
     for s_ticker in tickers:
         # extract dataset from ticker
-        sql += f"""
+        sql = f"""
             SELECT ts, adj_close FROM dummy.stock
             WHERE ticker = '{s_ticker}'
             ORDER BY ts;
@@ -94,6 +94,7 @@ def summary_stock_index(**context):
 
         dates = []
         prices = []
+        cur.execute(sql)
         for ts, price in cur.fetchall():
             dates.append(ts)
             prices.append(price)
@@ -102,14 +103,25 @@ def summary_stock_index(**context):
         df = pd.DataFrame(data=prices, index=dates, columns=["adj_close"])
         df = calculator.get_moving_average(df, window=200)
         df = calculator.get_low_n_high_52week(df)
+        df = df.fillna(0) # 결측치는 0으로 처리
         
+        # insert temp summary table
+        sql = ""
         for ts, row in df.iterrows():
             sql += f"""
-                INSERT INTO summary.stock (ts, adj_close, mv200, high_52w, low_52w, ticker)
+                INSERT INTO summary.temp_stock (ts, adj_close, mv200, high_52w, low_52w, ticker)
                 VALUES ('{ts.strftime("%Y-%m-%d %H:%M:%S")}', {row.adj_close}, {row.mv200}, {row.high_52w}, {row.low_52w}, '{s_ticker}');
             """
+        cur.execute(sql)
+
+    # remove origin summary table
+    # alter temp_table to origin_table
+    sql = f"""
+        DROP TABLE IF EXISTS summary.stock;
+        ALTER TABLE summary.temp_stock RENAME TO stock;
+        END;
+    """
     cur.execute(sql)
-    cur.execute("END;")
 
     cur.close()
     conn.close()
