@@ -1,4 +1,4 @@
-<h1> ETL 구현 실습을 위한 repository </h1>
+<h1> ETL 구현 실습을 위한 repo </h1>
 (feat. 망가져도 괜찮은 장난감)
 
 <h2> 목표 </h2>
