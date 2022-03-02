@@ -117,6 +117,15 @@ def summary_stock_index(**context):
     conn.close()
 
 
+"""
+    0. collect_stock_task:  주가 수집 서비스를 동작시킴
+        - 추후 실시간 주가 데이터로 바뀔 예정이므로 임시 코드
+    1. dummy_table_task:    OLTP(DB) -> OLAP(DB)로 복사
+        - 분석을 위해 사용될 OLAP로 복사
+        - 현재는 full refresh를 통해 기존 테이블 제거 -> 생성 -> 복사 순으로 이어짐
+    2. summary_stock_task:  OLAP(DB)를 바탕으로 요약 테이블 생성 후 저장
+        - OLAP 데이터를 바탕으로 주가 지표들을 계산하여 저장한 요약 테이블 생성
+"""
 with DAG(
     dag_id="stock_etl",
     default_args=default_args,
