@@ -23,15 +23,17 @@ Admin > Variables 에 "service_stock_url" 추가
 ```
 
 <h2> 기술 스택 </h2>
+
 1. 언어: Python3.8
+
 2. 환경: Docker(docker-compose, ubuntu18.04LTS)
-3. 외부 패키지:
-  - apache-airflow
-  - flask
-  - postgreSQL
-  - yfinance 
+
+3. 외부 패키지: apache-airflow, flask, postgreSQL, yfinance 
 
 <h2> 개발 예정 </h2>
+
 1. stock 이상 동작 알람 기능(slack bot)
+
 2. 클라우드(AWS-redshit, GCP-bigquery)
+
 3. 실시간 데이터(flink, sparkStream) 
